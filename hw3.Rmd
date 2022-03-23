@@ -1,0 +1,271 @@
+---
+title: "SOC542 Homework 3: Binary dependent variables"
+author: "Your name here"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+# This cell is here to set some options for how the output should be rendered.
+# Do not edit anything here
+# The following lines define how the output of code chunks should behave
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(include = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+
+# Packages
+library(tidyverse)
+library(knitr)
+library(stargazer)
+library(modelsummary)
+library(margins)
+library(haven)
+library(gridExtra)
+library(performance)
+library(marginaleffects)
+
+set.seed(08901) # Setting seed for random number generator
+```
+
+
+## Instructions
+This assignment will cover the material on binary variables and interaction terms, focusing mostly on logistic regression.
+
+**Please begin by adding your name to the top of the document on line 3.** Instructions for how to submit the assignment are provided at the bottom on the document. The procedure is the same as the previous assignments.
+
+Next, run the chunk above to load the relevant packages. You may need to install some of the packages before proceeding, so pay attention to any error messages in the Console.
+
+## Data
+
+You will be using the Diffusion of Microfinance dataset discussed in class. It contains individual survey responses for over sixteen thousand respondents in seventy-five villages in Karnataka, India. You can read more about the data in this Science article: https://www.science.org/doi/10.1126/science.1236498. The data you are using here are from the replication repository on the Harvard Dataverse.
+
+Run the chunk below to load and clean the individual-level survey data. Note that men are not dropped here but a small number of respondents with missing data have been removed.
+
+```{r loading, echo=FALSE, tidy=TRUE}
+# Do not modify this code
+data <- read_dta("data/individual_characteristics.dta") %>%
+    select(village, resp_gend, age, religion, caste, subcaste, educ, 
+           villagenative, shgparticipate, workflag, savings) %>%
+     filter(across(everything(), ~ . > 0)) %>% # dropping missing (negative values)
+     mutate(gender = as.factor(ifelse(resp_gend == 1, "Male", "Female")),
+           religion = recode_factor(as.factor(religion), `1` = "Hindu", `2` = "Muslim", `3` = "Christian"),
+           caste = recode_factor(as.factor(caste), `1` = "SC", `2` = "ST", `3` = "OBC",
+                                 `4` = "GC"), # See paragraph below for discussion.
+           shg = ifelse(shgparticipate == 1, 1, 0), # 1 = participant
+           native = ifelse(villagenative == 1, "native", "nonnative"), # Native = Born in current village
+           educ = replace(educ, educ == 16, 0), # Zero education was coded as 16, switched to 0
+           educ_none = ifelse(educ == 0, 1, 0), # No education
+           worked = ifelse(workflag ==1, 1, 0), # 1 = worked last week
+           savings = ifelse(savings==1, 1, 0), # 1 = has savings account
+           village = as.factor(village)) %>% # village
+    select(shg, gender, village, age, educ, educ_none, religion, caste, subcaste, native, worked, savings)
+
+# Specifying reference groups for categorical variables
+data <- data %>% mutate(caste = relevel(caste, ref = "GC"),
+                        religion = relevel(religion, ref = "Hindu"),
+                        gender = relevel(gender, ref = "Male"))
+```
+
+*A note on caste*
+If you are unfamiliar with the concept of caste, you may want to take a quick look at this Wikipedia article: https://en.wikipedia.org/wiki/Caste_system_in_India. Caste is somewhat analogous to ethnicity, but with a distinct hierarchical, relational component.
+
+You will be using with four categories of caste rather than the dummy version used in lecture. The Scheduled Castes and Schedule Tribes (SC and ST) are the more marginalized and disadvantaged groups in this context. The OBC (Other Backwards Classes) and General Classes (GC) are more advantaged. The OBC group is quite heterogeneous, but the GC considered the more dominant group. These categories of caste are used by the Indian government and aggregate members of disparate subcastes (or jatis). The `subcaste` column includes a more specific caste designation. There are 424 unique subcastes in the dataset, although a substantial number are likely duplicates (e.g. same names spelled differently). See section 2.2 of this working paper (https://osf.io/preprints/socarxiv/j367u/) for discussion of caste in Karnataka in the context of this dataset.
+
+## Questions
+
+Q1. Use these data to estimate an LPM predicting whether a respondent worked in the previous week (`worked`) as a function of gender, caste, age, and education. Do not include any additional variables or transformations. Once you have the results, answer the question below.
+
+***Note: The models covered in class used fixed-effects for villages to account for unmeasured village-level factors. Fixed-effects are not be required for the homework, but you can add them if you want (`+ village` is sufficient as the variable has already been cast as a factor). The tables will automatically suppress the fixed-effects from the regression output.***
+
+```{r q1, echo=TRUE, tidy=TRUE}
+lpm <- # Complete the model
+
+# Run this line to make a table. The output is rendered using the huxtable package. You may get an error if you do not have it installed.
+modelsummary(list("LPM"=lpm), stars = TRUE, gof_omit = "AIC|BIC|RMSE",
+             coef_omit = "village*", output = "huxtable")
+```
+
+Question: Write a paragraph describing the results of the model. Discuss each of the coefficients, including the intercept.
+Answer:
+
+Q2. Interpret the R-squared statistic and explain why it is unreliable for binary outcomes.
+Answer:
+
+Q3. Use the `predict` function to obtain the predicted probabilities for each observation. Calculate the proportion of predicted values outside of the [0,1] range and print your answer. Use the `hist()` function to make a histogram to show the distribution of the predicted values.
+
+```{r q3, echo=TRUE, tidy=TRUE}
+# Your code here
+```
+
+Q4. Estimate the same model using a logistic regression then write a response to the question below.
+
+```{r q4, echo=TRUE, tidy=TRUE}
+logistic <- # Your code here
+
+modelsummary(list("LPM" = lpm, "Logistic" = logistic), stars = TRUE,
+             gof_omit = "AIC|BIC|RMSE", coef_omit = "village*", output = "huxtable")
+```
+A: Take the coefficient for education and caste and explain the difference in interpretations between the LPM and the logistic regression model.
+Answer:
+
+B: The divide-by-4-rule helps to make the coefficients more comparable. Divide the logistic regression coefficients for gender and age by 4 and discuss the interpretation of each. Compare the results to those from the LPM.
+Answer:
+
+Q5: The chunk below gets the predicted probabilities for each observation from the two models and plots them as a scatterplot. You do not need to modify the code. Each point is shaded according to whether the true value of `worked` is 1 or 0. Run the code and answer the questions below.
+
+```{r q5, echo=FALSE, tidy=TRUE}
+# Do not modify this code
+p.lpm <- predict(lpm)
+p.logistic <- predict(logistic, type = "response")
+d <- data %>% mutate(p.lpm = p.lpm, p.logistic = p.logistic)
+ggplot(data = d, aes(x = p.lpm, y = p.logistic, color = as.factor(worked))) +
+    geom_point(alpha = 0.4) +
+    geom_vline(xintercept = 1) + geom_vline(xintercept = 0.5, linetype = "dashed") +
+    geom_hline(yintercept = 1) + geom_hline(yintercept = 0.5, linetype = "dashed") +
+    ylim(0, 1) + xlim(0,1.25) + theme_minimal() +
+    labs(x="Predicted value (LPM)", y = "Predicted value (logistic)",
+         color = "Worked last week (1=Yes)")
+```
+Question: Discuss the result shown in the graph about. What does this tell us about differences between the predictions of the two models? The dashed and solid lines should be helpful as you interpret the result.
+Answer:
+
+Q6: What are the main advantages of logistic regression compared to the linear probability model? Are there any reason why we might want to use an LPM?
+Answer: 
+
+Q7: Modify the arguments of `modelsummary` to include an argument to exponentiate the coefficients in the results. Answer the question below.
+
+```{r q4, echo=TRUE, tidy=TRUE}
+modelsummary(list("Logistic" = logistic), stars = TRUE, gof_omit = "AIC|BIC|RMSE",
+             coef_omit = "village*", output = "huxtable", ) # Add argument
+```
+Question: Write a paragraph describing the interpretation of the exponentiated coefficients for gender, age, and caste.
+Answer: 
+
+Q8. Estimate three more models predicting `worked` with alternative model specifications. You may use any combination of the following variables: `shg`, `gender`, `age`, `educ`, `educ_none`, `religion`, `caste`, `native`, `savings`. You are welcome to include transformations of these variables (e.g. logarithms, polynomials). Do not modify the dependent variable.
+
+```{r q8, echo=TRUE, tidy=TRUE}
+m1 <- # First specification here
+m2 <- # Second specification here
+m3 <- # Third specification here
+    
+modelsummary(list(m1, m2, m3), stars = TRUE, gof_omit = "AIC|BIC|RMSE",
+             coef_omit = "village*", output = "huxtable")
+```
+
+Q9. Use the log-likelihood scores in the table above to compare the three model. Discuss the differences between the three models and whether a particular model is preferable. You do not need to interpret every single coefficient, but you may want to make reference to any notable observations in your answer.
+Answer:
+
+Q10. Several alternatives to R-squared have been proposed for logistic regression. One of these, McFadden's R-squared, was discussed in lecture. This website (https://stats.oarc.ucla.edu/other/mult-pkg/faq/general/faq-what-are-pseudo-r-squareds/) includes a table containing several commonly encountered variations. 
+
+Use the code chunk below to calculate the Efron's R-squared for each of the three models you estimated for Q8. Since you will need to do this three times, you might want to create a function.
+
+For your convenience, the equation for Efron's R-squared is rendered here using LaTeX, where $\hat{p}$ is a vector of predicted probabilities from the model:
+
+$$R^2 = 1 - \frac{\sum_{i=1}^n(y_i - \hat{p_i})^2}{\sum_{i=1}^n(y_i - \bar{y})^2}$$
+
+```{r q10, echo=TRUE, tidy=TRUE}
+# Your code here
+```
+Question: Are the results consistent with those discussed in the previous answer (Q9)? Discuss any discrepancies.
+Answer: 
+
+***Note: The following questions are based on material from the lecture on 3/28 so some of the material may be unfamiliar if you are attempting to complete this before the lecture.***
+
+Q11. Estimate a logistic regression model to predict `savings`. Include predictors for gender, caste, age, education, as well as an interaction between age and education. *Do not include any village fixed-effects.* Answer the question below. 
+
+```{r q11, echo=TRUE, tidy=TRUE}
+savings.logit <- # Your code here
+modelsummary(list("Savings"=savings.logit),
+             stars = TRUE, gof_omit = "AIC|BIC|RMSE", output = "huxtable")
+```
+Question A: Interpret the log-odds coefficients for education, age, and the interaction between them. What does this model tell us about these variables?
+Answer: 
+
+Q12. When analyzing generalized linear models, it is often helpful to make predictions for average respondents. This can be more meaningful than interpreting coefficients. Construct a new dataset containing two rows, one for the average male and one for the average female. Use the mean value of each variable. The mean is undefined for caste, so set both values to "OBC" (or any group, as long as they are the same). Print this new dataset then use these average respondents to predict the probability that the average male and female respondent has a savings account. Answer the question below.
+```{r q12, echo=TRUE, tidy=TRUE, warning=FALSE}
+# Your answer here
+```
+Question: According to these predictions, is there any difference in the probability of possessing a savings account by gender?
+Answer: 
+
+Q13. Extend the previous model by adding a coefficient for age-squared and education-squared. Make sure to use the `I()` notation discussed in class. Answer the questions below.
+
+```{r q13, echo=TRUE, tidy=TRUE}
+savings.logit2 <- # Your code here
+modelsummary(list("Savings I" = savings.logit, "Savings II" = savings.logit2),
+             stars = TRUE, gof_omit = "AIC|BIC|RMSE", output = "huxtable")
+```
+Question A: Has the model fit improved by adding these squared terms? Has anything else changed?
+Answer:
+
+Question B: Does this change impact the interpretation of the interaction between age and education?
+Answer: 
+
+Q14. Let's the average marginal effect of each predictor to better understand the results of the model. Run the code chunk and answer the question below.
+
+```{r q14, echo=TRUE, tidy=TRUE}
+# Do not modify
+ME <- marginaleffects(savings.logit2)
+AME <- ME %>% summary()
+print(AME)
+```
+Question: Write a paragraph to interpret the marginal effects for age, caste, and education.
+Answer:
+
+Q15. We can use conditional marginal effects to better understand the interactions. The code below creates two pairs of plots, one for each of the previous models. Run the code and answer the question below.
+
+```{r q15, echo=TRUE, tidy=TRUE}
+# Do not modify this code
+a <- plot_cme(savings.logit, effect = "educ", condition = "age")
+b <- plot_cme(savings.logit, effect = "age", condition = "educ")
+c <- plot_cme(savings.logit2, effect = "educ", condition = "age")
+d <- plot_cme(savings.logit2, effect = "age", condition = "educ")
+grid.arrange(a,b, ncol = 2)
+grid.arrange(c,d, ncol = 2)
+```
+Question A: Start with the plots from the first model (click left thumbnail image to view). What does each plot tell us about the marginal effects of education and age on savings?
+Answer:
+
+Question B: Discuss the pair of plots from the second model on the right. What does each plot tell us about how savings vary as a function of age and education?
+Answer: 
+
+Q15. The `plot_cap` function allows us to plot the predicted values conditional on different values of the data. Run the code and answer the question below. 
+
+```{r q15, echo=TRUE, tidy=TRUE}
+# Do not modify this code
+plot_cap(savings.logit2, condition = c("age", "gender"))
+```
+Question: Describe the patterns observed in the plot. What does this tell us about the probability of having a savings account by age and gender?
+Answer: 
+
+## Optional extra credit
+Estimate a Bayesian version of the model from Q13 using `stan_glm` and analyze the results. You can add fixed-effects if desired, but it will be considerably slower to estimate and you may need to adjust the number of iterations to ensure convergence. I have provided code to make a table showing the results of a fitted model.
+```{r extra-credit, echo=TRUE, tidy=TRUE}
+# Uncomment the relevant lines and complete the model code
+# library(rstanarm)
+# savings.bayes <- stan_glm() # Complete model code
+
+# Note: It will also take a couple of minutes to produce this table
+# modelsummary(list(savings.bayes), gof_omit = "AIC|BIC|RMSE", output = "huxtable", statistic = "conf.int")
+```
+
+Once you have estimated a model, use the chunk below to analyze the results. You can draw on any of the techniques we have covered in class so far. You may also estimate additional models if necessary for comparisons. Feel free to make more chunks as needed.
+```{r extra-credit-analysis, echo=TRUE, tidy=TRUE}
+# Code here
+```
+
+# Submission instructions
+Once you have finished the assignment please complete the following steps to submit it:
+
+1. Click on the ``Knit`` menu at the top of the screen and select ``Knit to PDF``. Assuming there are no errors, this will render the RMarkdown document in a PDF. Verify that this document contains all of your answers.
+2. Add *both* this document and the PDF file to Github. Use ``Homework submitted`` as your main commit message.
+3. Push the commit to Github.
+4. Visit the Github repository in your browser and verify that the final version of both files has been correctly uploaded.
+
+If you cannot render the document to PDF then you can also try to render it as an HTML file, although a PDF is preferable. You may commit changes as many times as you need until the deadline. I encourage you to do a test commit before you commit the final version of the homework.
+
+It is possible that ``Knit`` will produce an error if you have any ``install.packages()`` calls in this document. If this happens, remove the calls. Please also avoid any unnecessary `print` or `View` calls in the final document.
+
+
