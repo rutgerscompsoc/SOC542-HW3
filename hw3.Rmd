@@ -163,7 +163,8 @@ For your convenience, the equation for Efron's R-squared is rendered here using 
 $$R^2 = 1 - \frac{\sum_{i=1}^n(y_i - \hat{p_i})^2}{\sum_{i=1}^n(y_i - \bar{y})^2}$$
 
 ```{r q10, echo=TRUE, tidy=TRUE}
-# Your code here
+efron <- function() {} # Complete the function
+# Use efron to calculate scores for models m1, m2, and m3. Print all three results.
 ```
 Question: Are the results consistent with those discussed in the previous answer (Q9)? Discuss any discrepancies.
 Answer: 
