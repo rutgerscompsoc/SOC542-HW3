@@ -18,7 +18,6 @@ knitr::opts_chunk$set(message = FALSE)
 # Packages
 library(tidyverse)
 library(knitr)
-library(stargazer)
 library(modelsummary)
 library(margins)
 library(haven)
@@ -41,7 +40,7 @@ Next, run the chunk above to load the relevant packages. You may need to install
 
 You will be using the Diffusion of Microfinance dataset discussed in class. It contains individual survey responses for over sixteen thousand respondents in seventy-five villages in Karnataka, India. You can read more about the data in this Science article: https://www.science.org/doi/10.1126/science.1236498. The data you are using here are from the replication repository on the Harvard Dataverse.
 
-Run the chunk below to load and clean the individual-level survey data. Note that men are not dropped here but a small number of respondents with missing data have been removed.
+Run the chunk below to load and clean the individual-level survey data. Note that a small number of respondents with missing data have been removed.
 
 ```{r loading, echo=FALSE, tidy=TRUE}
 # Do not modify this code
@@ -56,7 +55,7 @@ data <- read_dta("data/individual_characteristics.dta") %>%
            shg = ifelse(shgparticipate == 1, 1, 0), # 1 = participant
            native = ifelse(villagenative == 1, "native", "nonnative"), # Native = Born in current village
            educ = replace(educ, educ == 16, 0), # Zero education was coded as 16, switched to 0
-           educ_none = ifelse(educ == 0, 1, 0), # No education
+           educ_none = ifelse(educ == 0, 1, 0), # No formal education
            worked = ifelse(workflag ==1, 1, 0), # 1 = worked last week
            savings = ifelse(savings==1, 1, 0), # 1 = has savings account
            village = as.factor(village)) %>% # village
@@ -75,19 +74,17 @@ You will be using with four categories of caste rather than the dummy version us
 
 ## Questions
 
-Q1. Use these data to estimate an LPM predicting whether a respondent worked in the previous week (`worked`) as a function of gender, caste, age, and education. Do not include any additional variables or transformations. Once you have the results, answer the question below.
-
-***Note: The models covered in class used fixed-effects for villages to account for unmeasured village-level factors. Fixed-effects are not be required for the homework, but you can add them if you want (`+ village` is sufficient as the variable has already been cast as a factor). The tables will automatically suppress the fixed-effects from the regression output.***
+Q1. Use these data to estimate an LPM predicting whether a respondent worked in the previous week (`worked`) as a function of gender, caste, age, and education. Please also include a term for `village` to account for unmeasured village-level variation. This will be suppressed from the regression tables. Do not include any additional variables or transformations. Once you have the results, answer the question below.
 
 ```{r q1, echo=TRUE, tidy=TRUE}
 lpm <- # Complete the model
 
 # Run this line to make a table. The output is rendered using the huxtable package. You may get an error if you do not have it installed.
-modelsummary(list("LPM"=lpm), stars = TRUE, gof_omit = "AIC|BIC|RMSE",
+modelsummary(list("LPM"=lpm), stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001), gof_omit = "AIC|BIC|RMSE",
              coef_omit = "village*", output = "huxtable")
 ```
 
-Question: Write a paragraph describing the results of the model. Discuss each of the coefficients, including the intercept.
+Question: Write a paragraph describing the results of the model. Discuss each of the coefficients AND interpret the intercept.
 Answer:
 
 Q2. Interpret the R-squared statistic and explain why it is unreliable for binary outcomes.
@@ -104,13 +101,13 @@ Q4. Estimate the same model using a logistic regression then write a response to
 ```{r q4, echo=TRUE, tidy=TRUE}
 logistic <- # Your code here
 
-modelsummary(list("LPM" = lpm, "Logistic" = logistic), stars = TRUE,
+modelsummary(list("LPM" = lpm, "Logistic" = logistic), stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001),
              gof_omit = "AIC|BIC|RMSE", coef_omit = "village*", output = "huxtable")
 ```
-A: Take the coefficient for education and caste and explain the difference in interpretations between the LPM and the logistic regression model.
+A: Take the coefficients for education and caste and intepret each. Explain the difference in interpretations between the LPM and the logistic regression model.
 Answer:
 
-B: The divide-by-4-rule helps to make the coefficients more comparable. Divide the logistic regression coefficients for gender and age by 4 and discuss the interpretation of each. Compare the results to those from the LPM.
+B: The divide-by-4-rule helps to make the coefficients more comparable. Divide the logistic regression coefficients for gender by 4 and discuss the interpretation. Compare the results to those from the LPM.
 Answer:
 
 Q5: The chunk below gets the predicted probabilities for each observation from the two models and plots them as a scatterplot. You do not need to modify the code. Each point is shaded according to whether the true value of `worked` is 1 or 0. Run the code and answer the questions below.
@@ -134,32 +131,32 @@ Answer:
 Q6: What are the main advantages of logistic regression compared to the linear probability model? Are there any reason why we might want to use an LPM?
 Answer: 
 
-Q7: Modify the arguments of `modelsummary` to include an argument to exponentiate the coefficients in the results. Answer the question below.
+Q7: Modify the arguments of `modelsummary` to include an argument to exponentiate the coefficients in the results. Run the chunk and answer the question below.
 
 ```{r q4, echo=TRUE, tidy=TRUE}
-modelsummary(list("Logistic" = logistic), stars = TRUE, gof_omit = "AIC|BIC|RMSE",
+modelsummary(list("Logistic" = logistic), stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001), gof_omit = "AIC|BIC|RMSE",
              coef_omit = "village*", output = "huxtable", ) # Add argument
 ```
-Question: Write a paragraph describing the interpretation of the exponentiated coefficients for gender, age, and caste.
+Question: Write a paragraph describing the interpretation of the exponentiated coefficients for gender and age.
 Answer: 
 
-Q8. Estimate three more models predicting `worked` with alternative model specifications. You may use any combination of the following variables: `shg`, `gender`, `age`, `educ`, `educ_none`, `religion`, `caste`, `native`, `savings`. You are welcome to include transformations of these variables (e.g. logarithms, polynomials). Do not modify the dependent variable.
+Q8. Estimate three more models predicting `worked` with alternative model specifications. You may use any combination of the following variables: `shg`, `gender`, `age`, `educ`, `educ_none`, `religion`, `caste`, `native`, `savings`. You are welcome to include transformations of these variables (e.g. logarithms, polynomials) but do not modify the dependent variable.
 
 ```{r q8, echo=TRUE, tidy=TRUE}
 m1 <- # First specification here
 m2 <- # Second specification here
 m3 <- # Third specification here
     
-modelsummary(list(m1, m2, m3), stars = TRUE, gof_omit = "AIC|BIC|RMSE",
+modelsummary(list(m1, m2, m3), stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001), gof_omit = "AIC|BIC|RMSE",
              coef_omit = "village*", output = "huxtable")
 ```
 
-Q9. Use the log-likelihood scores in the table above to compare the three model. Discuss the differences between the three models and whether a particular model is preferable. You do not need to interpret every single coefficient, but you may want to make reference to any notable observations in your answer.
+Q9. Use the log-likelihood scores in the table above to compare the three models. Discuss the differences between the three models and whether a particular specification is preferable. You do not need to interpret every single coefficient, but you may want to make reference to any notable observations in your answer.
 Answer:
 
 Q10. Several alternatives to R-squared have been proposed for logistic regression. One of these, McFadden's R-squared, was discussed in lecture. This website (https://stats.oarc.ucla.edu/other/mult-pkg/faq/general/faq-what-are-pseudo-r-squareds/) includes a table containing several commonly encountered variations. 
 
-Use the code chunk below to calculate the Efron's R-squared for each of the three models you estimated for Q8. Since you will need to do this three times, you might want to create a function.
+Use the code chunk below to create a function to calculate the Efron's R-squared. Use this function to calculate the Efron's R-squared for each of the three models from Q8 then answer the question below.
 
 For your convenience, the equation for Efron's R-squared is rendered here using LaTeX, where $\hat{p}$ is a vector of predicted probabilities from the model:
 
@@ -178,12 +175,12 @@ Q11. Estimate a logistic regression model to predict `savings`. Include predicto
 ```{r q11, echo=TRUE, tidy=TRUE}
 savings.logit <- # Your code here
 modelsummary(list("Savings"=savings.logit),
-             stars = TRUE, gof_omit = "AIC|BIC|RMSE", output = "huxtable")
+             stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001), gof_omit = "AIC|BIC|RMSE", output = "huxtable")
 ```
 Question A: Interpret the log-odds coefficients for education, age, and the interaction between them. What does this model tell us about these variables?
 Answer: 
 
-Q12. When analyzing generalized linear models, it is often helpful to make predictions for average respondents. This can be more meaningful than interpreting coefficients. Construct a new dataset containing two rows, one for the average male and one for the average female. Use the mean value of each variable. The mean is undefined for caste, so set both values to "OBC" (or any group, as long as they are the same). Print this new dataset then use these average respondents to predict the probability that the average male and female respondent has a savings account. Answer the question below.
+Q12. When analyzing generalized linear models, it is often helpful to make predictions for average respondents. This can be more meaningful than interpreting coefficients. Construct a new dataset containing two rows, one for the average male and one for the average female. Use the mean value of each variable. The mean is undefined for caste, so set both values to the most numerous group, "OBC". Print this new dataset then use these average respondents to predict the probability that the average male and female respondent has a savings account. Answer the question below.
 ```{r q12, echo=TRUE, tidy=TRUE, warning=FALSE}
 # Your answer here
 ```
@@ -195,7 +192,7 @@ Q13. Extend the previous model by adding a coefficient for age-squared and educa
 ```{r q13, echo=TRUE, tidy=TRUE}
 savings.logit2 <- # Your code here
 modelsummary(list("Savings I" = savings.logit, "Savings II" = savings.logit2),
-             stars = TRUE, gof_omit = "AIC|BIC|RMSE", output = "huxtable")
+             stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001), gof_omit = "AIC|BIC|RMSE", output = "huxtable")
 ```
 Question A: Has the model fit improved by adding these squared terms? Has anything else changed?
 Answer:
@@ -239,22 +236,6 @@ plot_cap(savings.logit2, condition = c("age", "gender"))
 ```
 Question: Describe the patterns observed in the plot. What does this tell us about the probability of having a savings account by age and gender?
 Answer: 
-
-## Optional extra credit
-Estimate a Bayesian version of the model from Q13 using `stan_glm` and analyze the results. You can add fixed-effects if desired, but it will be considerably slower to estimate and you may need to adjust the number of iterations to ensure convergence. I have provided code to make a table showing the results of a fitted model.
-```{r extra-credit, echo=TRUE, tidy=TRUE}
-# Uncomment the relevant lines and complete the model code
-# library(rstanarm)
-# savings.bayes <- stan_glm() # Complete model code
-
-# Note: It will also take a couple of minutes to produce this table
-# modelsummary(list(savings.bayes), gof_omit = "AIC|BIC|RMSE", output = "huxtable", statistic = "conf.int")
-```
-
-Once you have estimated a model, use the chunk below to analyze the results. You can draw on any of the techniques we have covered in class so far. You may also estimate additional models if necessary for comparisons. Feel free to make more chunks as needed.
-```{r extra-credit-analysis, echo=TRUE, tidy=TRUE}
-# Code here
-```
 
 # Submission instructions
 Once you have finished the assignment please complete the following steps to submit it:
