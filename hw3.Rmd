@@ -205,7 +205,7 @@ Q14. Let's the average marginal effect of each predictor to better understand th
 
 ```{r q14, echo=TRUE, tidy=TRUE}
 # Do not modify
-ME <- marginaleffects(savings.logit2)
+ME <- slopes(savings.logit2)
 AME <- ME %>% summary()
 print(AME)
 ```
