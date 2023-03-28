@@ -54,7 +54,7 @@ data <- read_dta("data/individual_characteristics.dta") %>%
                                  `4` = "GC"), # See paragraph below for discussion.
            shg = ifelse(shgparticipate == 1, 1, 0), # 1 = participant
            native = ifelse(villagenative == 1, "native", "nonnative"), # Native = Born in current village
-           educ = replace(educ, educ == 16, 0), # Zero education was coded as 16, switched to 0
+           educ = as.numeric(replace(educ, educ == 16, 0)), # Zero education was coded as 16, switched to 0
            educ_none = ifelse(educ == 0, 1, 0), # No formal education
            worked = ifelse(workflag ==1, 1, 0), # 1 = worked last week
            savings = ifelse(savings==1, 1, 0), # 1 = has savings account
@@ -81,7 +81,7 @@ lpm <- # Complete the model
 
 # Run this line to make a table. The output is rendered using the huxtable package. You may get an error if you do not have it installed.
 modelsummary(list("LPM"=lpm), stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001), gof_omit = "AIC|BIC|RMSE",
-             coef_omit = "village*", output = "huxtable")
+             coef_omit = "village*", output = "markdown")
 ```
 
 Question: Write a paragraph describing the results of the model. Discuss each of the coefficients AND interpret the intercept.
@@ -102,7 +102,7 @@ Q4. Estimate the same model using a logistic regression then write a response to
 logistic <- # Your code here
 
 modelsummary(list("LPM" = lpm, "Logistic" = logistic), stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001),
-             gof_omit = "AIC|BIC|RMSE", coef_omit = "village*", output = "huxtable")
+             gof_omit = "AIC|BIC|RMSE", coef_omit = "village*", output = "markdown")
 ```
 A: Take the coefficients for education and caste and intepret each. Explain the difference in interpretations between the LPM and the logistic regression model.
 Answer:
@@ -133,9 +133,9 @@ Answer:
 
 Q7: Modify the arguments of `modelsummary` to include an argument to exponentiate the coefficients in the results. Run the chunk and answer the question below.
 
-```{r q4, echo=TRUE, tidy=TRUE}
+```{r q7, echo=TRUE, tidy=TRUE}
 modelsummary(list("Logistic" = logistic), stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001), gof_omit = "AIC|BIC|RMSE",
-             coef_omit = "village*", output = "huxtable", ) # Add argument
+             coef_omit = "village*", output = "markdown", ) # Add argument
 ```
 Question: Write a paragraph describing the interpretation of the exponentiated coefficients for gender and age.
 Answer: 
@@ -148,7 +148,7 @@ m2 <- # Second specification here
 m3 <- # Third specification here
     
 modelsummary(list(m1, m2, m3), stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001), gof_omit = "AIC|BIC|RMSE",
-             coef_omit = "village*", output = "huxtable")
+             coef_omit = "village*", output = "markdown")
 ```
 
 Q9. Use the log-likelihood scores in the table above to compare the three models. Discuss the differences between the three models and whether a particular specification is preferable. You do not need to interpret every single coefficient, but you may want to make reference to any notable observations in your answer.
@@ -176,7 +176,7 @@ Q11. Estimate a logistic regression model to predict `savings`. Include predicto
 ```{r q11, echo=TRUE, tidy=TRUE}
 savings.logit <- # Your code here
 modelsummary(list("Savings"=savings.logit),
-             stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001), gof_omit = "AIC|BIC|RMSE", output = "huxtable")
+             stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001), gof_omit = "AIC|BIC|RMSE", output = "markdown")
 ```
 Question A: Interpret the log-odds coefficients for education, age, and the interaction between them. What does this model tell us about these variables?
 Answer: 
@@ -193,7 +193,7 @@ Q13. Extend the previous model by adding a coefficient for age-squared and educa
 ```{r q13, echo=TRUE, tidy=TRUE}
 savings.logit2 <- # Your code here
 modelsummary(list("Savings I" = savings.logit, "Savings II" = savings.logit2),
-             stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001), gof_omit = "AIC|BIC|RMSE", output = "huxtable")
+             stars = c("*" = 0.05, "**" = 0.01, "***" = 0.001), gof_omit = "AIC|BIC|RMSE", output = "markdown")
 ```
 Question A: Has the model fit improved by adding these squared terms? Has anything else changed?
 Answer:
@@ -216,10 +216,10 @@ Q15. We can use conditional marginal effects to better understand the interactio
 
 ```{r q15, echo=TRUE, tidy=TRUE}
 # Do not modify this code
-a <- plot_cme(savings.logit, effect = "educ", condition = "age")
-b <- plot_cme(savings.logit, effect = "age", condition = "educ")
-c <- plot_cme(savings.logit2, effect = "educ", condition = "age")
-d <- plot_cme(savings.logit2, effect = "age", condition = "educ")
+a <- plot_slopes(savings.logit, variables ="educ", condition = "age")
+b <- plot_slopes(savings.logit, variables ="age", condition = "educ")
+c <- plot_slopes(savings.logit2, variables ="educ", condition = "age")
+d <- plot_slopes(savings.logit2, variables ="age", condition = "educ")
 grid.arrange(a,b, ncol = 2)
 grid.arrange(c,d, ncol = 2)
 ```
@@ -229,11 +229,11 @@ Answer:
 Question B: Discuss the pair of plots from the second model on the right. What does each plot tell us about how savings vary as a function of age and education?
 Answer: 
 
-Q15. The `plot_cap` function allows us to plot the predicted values conditional on different values of the data. Run the code and answer the question below. 
+Q15. The `plot_predictions` function allows us to plot the predicted values conditional on different values of the data. Run the code and answer the question below. 
 
-```{r q15, echo=TRUE, tidy=TRUE}
+```{r q16, echo=TRUE, tidy=TRUE}
 # Do not modify this code
-plot_cap(savings.logit2, condition = c("age", "gender"))
+plot_predictions(savings.logit2, condition = c("age", "gender"))
 ```
 Question: Describe the patterns observed in the plot. What does this tell us about the probability of having a savings account by age and gender?
 Answer: 
